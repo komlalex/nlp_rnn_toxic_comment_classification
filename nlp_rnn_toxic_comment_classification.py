@@ -58,10 +58,14 @@ tokenizer = get_tokenizer("basic_english")
 
 VOCAB_SIZE = 1500
 comment_tokens = raw_df.comment_text.map(tokenizer) 
-unc_token = "<unk>"
-pad_token = "<pad>"
-vocab = build_vocab_from_iterator(comment_tokens,
-                                  specials=[unc_token, pad_token], 
-                                  max_tokens = VOCAB_SIZE) 
+unc_token = '<unk>'
+pad_token = '<pad>'
+vocab = build_vocab_from_iterator(iterator=comment_tokens) 
+#vocab.set_default_index
 
-print(vocab["this"])
+print(vocab[["xxxxxxxxxxxx", "rrrrrrrrrrrdd"]])
+
+
+
+
+
