@@ -11,45 +11,57 @@ import pandas as pd
 import matplotlib.pyplot as plt 
 import numpy as np 
 
-from nltk.tokenize import word_tokenize 
-from nltk.stem import SnowballStemmer 
-from nltk.corpus import stopwords 
 
-from sklearn.feature_extraction.text import TfidfVectorizer 
-from sklearn.model_selection import train_test_split 
-
-from sklearn.metrics import accuracy_score, f1_score 
 
 import torch
 from torch import nn 
 from torch.utils.data import TensorDataset, DataLoader
-import torch.nn.functional as F
+import torch.nn.functional as F 
+
+from torchtext.data.utils import get_tokenizer 
+from torchtext.vocab import build_vocab_from_iterator
 
 import tqdm.auto as tqdm 
 
+"""Set-up device agnostic code"""
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 """Download Data"""
 raw_df = pd.read_csv("./data/train.csv") 
 test_df = pd.read_csv("./data/test.csv")
 sub_df = pd.read_csv("./data/sample_submission.csv") 
 
-print(len(raw_df))
+#print(len(raw_df))
+#print(raw_df.info())
 #raw_df.obscene.value_counts(normalize=False).plot(kind="bar")
-#plt.show()
+#plt.show() 
 
-stemmer = SnowballStemmer(language="english")
-english_stopwords = stopwords.words("english")
+target_cols = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"] 
 
-def tokenize(text): 
-    return [stemmer.stem(token) for token in word_tokenize(text)] 
+for col in target_cols: 
+    print(raw_df[col].value_counts(normalize=True))
 
-vectorizer = TfidfVectorizer(
-    lowercase=True,
-    tokenizer=tokenize, 
-    max_features=2000,
-    stop_words=english_stopwords
-) 
 
-vectorizer.fit(raw_df.comment_text) 
 
-print(vectorizer.get_feature_names_out())
+"""
+Prepare the Data for Training 
+- Create a vocabulary using TorchText
+- Create training and training datasets
+- Create PyTorch DataLoaders
+"""
+tokenizer = get_tokenizer("basic_english") 
+
+#sample_comment = raw_df.comment_text.values[0]
+#sample_comment_tokens = tokenizer(sample_comment)
+
+#print(sample_comment_tokens[:20]) 
+
+VOCAB_SIZE = 1500
+comment_tokens = raw_df.comment_text.map(tokenizer) 
+unc_token = "<unk>"
+pad_token = "<pad>"
+vocab = build_vocab_from_iterator(comment_tokens,
+                                  specials=[unc_token, pad_token], 
+                                  max_tokens = VOCAB_SIZE) 
+
+print(vocab["this"])
