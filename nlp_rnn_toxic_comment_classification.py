@@ -15,9 +15,10 @@ import numpy as np
 
 import torch
 from torch import nn 
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader 
 import torch.nn.functional as F 
 
+import torchtext
 from torchtext.data.utils import get_tokenizer 
 from torchtext.vocab import build_vocab_from_iterator
 
@@ -38,8 +39,8 @@ sub_df = pd.read_csv("./data/sample_submission.csv")
 
 target_cols = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate"] 
 
-for col in target_cols: 
-    print(raw_df[col].value_counts(normalize=True))
+#for col in target_cols: 
+#    print(raw_df[col].value_counts(normalize=True))
 
 
 
@@ -56,14 +57,47 @@ tokenizer = get_tokenizer("basic_english")
 
 #print(sample_comment_tokens[:20]) 
 
-VOCAB_SIZE = 1500
+VOCAB_SIZE = 2000
 comment_tokens = raw_df.comment_text.map(tokenizer) 
 unc_token = '<unk>'
 pad_token = '<pad>'
-vocab = build_vocab_from_iterator(iterator=comment_tokens) 
-#vocab.set_default_index
+vocab = build_vocab_from_iterator(comment_tokens, 
+                                specials=[unc_token, pad_token], 
+                                max_tokens=VOCAB_SIZE)
+#print(vocab["this"])
 
-print(vocab[["xxxxxxxxxxxx", "rrrrrrrrrrrdd"]])
+sample_comment = raw_df.comment_text.values[0]
+sample_comment_tokens = tokenizer(sample_comment)
+sample_comment_tokens = sample_comment_tokens[:10]
+print(sample_comment_tokens)
+
+
+vocab.set_default_index(vocab[unc_token])
+sample_indices = vocab.lookup_indices(sample_comment_tokens) 
+
+sample_comment_recovered = vocab.lookup_tokens(sample_indices)
+print(sample_comment_recovered) 
+print(device)
+
+
+"""Create Training & Validation Sets 
+- Define a custom PyTorch Dataset
+- Pass raw data into the dataset
+- Split the PyTorch Dataset
+"""
+
+
+class JigsawDataset(Dataset):
+   def __init__(self):
+     super().__init__() 
+     pass 
+   
+   def __getitem__(self, index):
+    pass 
+
+   def __len__(self):
+     pass
+
 
 
 
