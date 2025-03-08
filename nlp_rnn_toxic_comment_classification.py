@@ -24,6 +24,7 @@ import torch.nn.functional as F
 
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 import tqdm.auto as tqdm 
 
 """Set-up device agnostic code"""
@@ -48,44 +49,24 @@ target_cols = ["toxic", "severe_toxic", "obscene", "threat", "insult", "identity
 
 """
 Prepare the Data for Training 
-- Create a vocabulary using TorchText
+- Create a vocabulary using sklearn
 - Create training and training datasets
-- Create PyTorch DataLoaders
+- Create PyTorch DataLoaders 
 """
 
 
-#sample_comment = raw_df.comment_text.values[0]
-#sample_comment_tokens = tokenizer(sample_comment)
-
-#print(sample_comment_tokens[:20]) 
-
-VOCAB_SIZE = 200
-"""
-comment_tokens = raw_df.comment_text.map(tokenizer) 
-unc_token = '<unk>'
-pad_token = '<pad>'
-
-#print(vocab["this"])
-
-sample_comment = raw_df.comment_text.values[0]
-sample_comment_tokens = tokenizer(sample_comment)
-sample_comment_tokens = sample_comment_tokens[:10]
-#print(sample_comment_tokens)
 
 
-vocab.set_default_index(vocab[unc_token])
-sample_indices = vocab.lookup_indices(sample_comment_tokens) 
-
-sample_comment_recovered = vocab.lookup_tokens(sample_indices)
-#print(sample_comment_recovered) 
-"""
-
-"""USING SKLEARN"""
+VOCAB_SIZE = 1500
+MAX_LENGTH = 150
 unk_token = "<unk>"
 pad_token = "<pad>"
+
 vectorizer = CountVectorizer(max_features=VOCAB_SIZE,
-tokenizer= word_tokenize 
-)
+                            tokenizer= word_tokenize 
+                            )
+
+
 vectorizer.fit(raw_df.comment_text)
 vocab = vectorizer.vocabulary_ 
 index_to_word = {index: word for word, index in vocab.items()} 
@@ -93,8 +74,6 @@ first_word = index_to_word[0]
 second_word = index_to_word[1]
 
 ft = vectorizer.get_feature_names_out()
-print(type(vocab), type(ft))
-print(ft[:10])
 
 index_to_word[0] = unk_token
 index_to_word[1] = pad_token
@@ -104,7 +83,6 @@ index_to_word[len(index_to_word)] = second_word
 
 word_to_index = {word: index for index, word in index_to_word.items()}
 
-abi_word = "fhberthgjrtnsj"
 
 def get_index(word): 
   try:
@@ -112,15 +90,8 @@ def get_index(word):
   except:
     return word_to_index[unk_token] 
 
-print("nonsense word", get_index(abi_word))
-"""Create Training & Validation Sets 
-- Define a custom PyTorch Dataset
-- Pass raw data into the dataset
-- Split the PyTorch Dataset
-"""
 #raw_df.comment_text.sample(1000).map(tokenizer).map(len).value_counts().plot(kind="hist")
 #plt.show()
-MAX_LENGTH = 150
 
 def pad_tokens(tokens):
   if len(tokens) >= MAX_LENGTH:
@@ -155,9 +126,9 @@ class JigsawDataset(Dataset):
 raw_ds = JigsawDataset(raw_df) 
 test_ds = JigsawDataset(test_df, is_test=True)
 
-print(raw_ds[12]) 
+print(test_ds[15])
 
-print(raw_df[target_cols].values[12])
+""""""
 
 
 
