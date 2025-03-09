@@ -14,9 +14,14 @@ import numpy as np
 
 
 import torch
-from torch import nn 
+import torch.nn as nn 
+import torch.nn.functional as F
+
 from torch.utils.data import Dataset, DataLoader 
-import torch.nn.functional as F 
+from torch.utils.data import random_split 
+
+import pytorch_lightning as pl
+
 
 #import torchtext
 #from torchtext.data.utils import get_tokenizer 
@@ -73,8 +78,6 @@ index_to_word = {index: word for word, index in vocab.items()}
 first_word = index_to_word[0]
 second_word = index_to_word[1]
 
-ft = vectorizer.get_feature_names_out()
-
 index_to_word[0] = unk_token
 index_to_word[1] = pad_token
 index_to_word[len(index_to_word)] = first_word
@@ -112,7 +115,7 @@ class JigsawDataset(Dataset):
     comment_text = self.df.comment_text.values[index].lower()
     comment_tokens = pad_tokens(word_tokenize(comment_text))
     inputs = [get_index(token) for token in comment_tokens]
-    inputs = torch.tensor(inputs).float()
+    inputs = torch.tensor(inputs).long()
 
     if self.is_test:
       target = torch.tensor([0, 0, 0, 0, 0, 0]).float()
@@ -126,10 +129,88 @@ class JigsawDataset(Dataset):
 raw_ds = JigsawDataset(raw_df) 
 test_ds = JigsawDataset(test_df, is_test=True)
 
-print(test_ds[15])
+print(raw_ds[0])
 
-""""""
+"""Create Test and Validation Sets"""
+VAL_FRAC = 0.25 
+train_ds, val_ds = random_split(raw_ds, [1-VAL_FRAC, VAL_FRAC])
 
+"""Create PyTorch DataLoaders"""
+BATCH_SIZE = 256
+train_dl = DataLoader(train_ds, 
+                      shuffle=True, 
+                      batch_size=BATCH_SIZE,
+                      pin_memory=True)
+val_ds = DataLoader(
+                    val_ds, 
+                    batch_size=BATCH_SIZE * 2, 
+                    pin_memory=True
+                    )
+test_dl = DataLoader(test_ds, 
+                      batch_size=BATCH_SIZE * 2, 
+                      pin_memory=True
+                    )  
+
+for batch in train_dl: 
+  b_inputs, b_targets = batch 
+  print("b_input.shape", b_inputs.shape)
+  print("b_targets.shape", b_targets.shape)
+  break 
+
+"""
+Build a Recurrent Neural Network
+1. Understand how recurrent neural networks work
+2. Create a recurrent neural network 
+3. Pass some data through the network
+"""
+device = "cuda" if torch.cuda.is_available() else "cpu" 
+
+
+emb_layer = nn.Embedding(len(word_to_index), embedding_dim=256, padding_idx=1)
+rnn_layer = nn.RNN(256, 128, 1, batch_first=True)
+
+for batch in train_dl: 
+  x, y = batch 
+  print(f"x shape {x.shape}")
+  print(f"y shape", y.shape)
+
+  emb_out = emb_layer(x)
+  print(f"emb_out shape: {emb_out.shape}") 
+
+  rnn_out, hn = rnn_layer(emb_out)
+  print(f"rnn_out shape: {rnn_out.shape}")
+  print(f"hn shape: {hn.shape}")
+  break 
+
+class JigsawModel(pl.LightningModule):
+  def __init__(self):
+    super().__init__()
+    self.emb = nn.Embedding(len(word_to_index), 256, 1)
+    self.lstm = nn.LSTM(256, 128, 1, batch_first=True)
+    self.linear = nn.Linear(128, 6)
+
+  def forward(self, x: torch.Tensor) -> torch.Tensor: 
+    out = self.emb(x)
+    out, hn = self.lstm(out)
+    out = F.relu(out[:, -1, :]) 
+    out = self.linear(out) 
+    return out 
+
+model = JigsawModel().to(device) 
+
+for batch in train_dl: 
+  x, y = batch 
+  x, y = x.to(device), y.to(device) 
+  print(f"x shape {x.shape}")
+  print(f"y shape", y.shape)
+
+  outputs = model(x) 
+  print(f"Output shape: {outputs.shape}") 
+
+  probs = torch.sigmoid(outputs)
+  loss = F.binary_cross_entropy(probs, y)
+  print(f"Loss: {loss}")
+  break
 
 
 
