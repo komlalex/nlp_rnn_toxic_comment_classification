@@ -140,15 +140,18 @@ BATCH_SIZE = 256
 train_dl = DataLoader(train_ds, 
                       shuffle=True, 
                       batch_size=BATCH_SIZE,
-                      pin_memory=True)
+                      pin_memory=True, 
+                      )
 val_ds = DataLoader(
                     val_ds, 
                     batch_size=BATCH_SIZE * 2, 
-                    pin_memory=True
+                    pin_memory=True,
+                   
                     )
 test_dl = DataLoader(test_ds, 
                       batch_size=BATCH_SIZE * 2, 
-                      pin_memory=True
+                      pin_memory=True, 
+                
                     )  
 
 for batch in train_dl: 
@@ -188,6 +191,7 @@ class JigsawModel(pl.LightningModule):
     self.emb = nn.Embedding(len(word_to_index), 256, 1)
     self.lstm = nn.LSTM(256, 128, 1, batch_first=True)
     self.linear = nn.Linear(128, 6)
+    self.learning_rate = 0.001
 
   def forward(self, x: torch.Tensor) -> torch.Tensor: 
     out = self.emb(x)
@@ -195,6 +199,37 @@ class JigsawModel(pl.LightningModule):
     out = F.relu(out[:, -1, :]) 
     out = self.linear(out) 
     return out 
+  
+  def training_step(self, batch, batch_idx):
+    x, y = batch 
+    x, y = x.to(device), y.to(device)
+    outputs = self(x) 
+    loss = F.binary_cross_entropy_with_logits(outputs, y) 
+    return loss 
+
+  def validation_step(self, batch, batch_idx):
+    x, y = batch 
+    x, y = x.to(device), y.to(device)
+    outputs = self(x)
+    loss = F.binary_cross_entropy_with_logits(outputs, y) 
+    return loss.item()
+
+  def on_validation_epoch_end(self, validation_step_outputs):
+    loss = torch.mean(validation_step_outputs)
+    print(f"Epoch: {self.current_epoch} | Loss: {loss}") 
+
+  def predict_step(self, batch, batch_idx):
+    x, y = batch 
+    x, y = x.to(device), y.to(device) 
+    outputs = self(x)
+    probs  = torch.sigmoid(outputs) 
+    return probs 
+
+
+  def configure_optimizers(self):
+    return torch.optim.Adam(params=self.parameters(), lr=self.learning_rate)
+    
+    
 
 model = JigsawModel().to(device) 
 
@@ -208,11 +243,12 @@ for batch in train_dl:
   print(f"Output shape: {outputs.shape}") 
 
   probs = torch.sigmoid(outputs)
-  loss = F.binary_cross_entropy(probs, y)
+  loss = F.binary_cross_entropy_with_logits(probs, y)
   print(f"Loss: {loss}")
-  break
+  break 
 
-
-
+"""Train and Evaluate the Model"""
+trainer = pl.Trainer(max_epochs=3)
+trainer.fit(model, train_dl)
 
 
