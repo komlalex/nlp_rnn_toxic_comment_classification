@@ -68,7 +68,8 @@ unk_token = "<unk>"
 pad_token = "<pad>"
 
 vectorizer = CountVectorizer(max_features=VOCAB_SIZE,
-                            tokenizer= word_tokenize 
+                            tokenizer= word_tokenize,
+                            token_pattern=None
                             )
 
 
@@ -141,6 +142,7 @@ train_dl = DataLoader(train_ds,
                       shuffle=True, 
                       batch_size=BATCH_SIZE,
                       pin_memory=True, 
+                      num_workers=4
                       )
 val_ds = DataLoader(
                     val_ds, 
@@ -249,6 +251,9 @@ for batch in train_dl:
 
 """Train and Evaluate the Model"""
 trainer = pl.Trainer(max_epochs=3)
-trainer.fit(model, train_dl)
 
 
+if __name__ == '__main__':
+    trainer.fit(model, train_dl)
+
+"""Make Predictions"""
